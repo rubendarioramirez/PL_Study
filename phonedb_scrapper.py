@@ -15,8 +15,7 @@ import requests as r
 baseURL = 'http://phonedb.net/'
 
 
-
-##Get all pages links###################################################################
+##Generate all pages links###################################################################
 links_df = pd.DataFrame()
 base_devices_detail_url = 'http://phonedb.net/index.php?m=device&s=list&filter='
 
@@ -29,6 +28,7 @@ for i in range(228):
 
 ##CREATE AN EMPTY LINK DF DATA FRAME
 df = pd.DataFrame()
+##Get all link: For each phone 
 for link in links_df['full_link']:
     source_code=r.get(link)
     plain_text=source_code.text
@@ -42,11 +42,11 @@ for link in links_df['full_link']:
             df = df.append(pd.DataFrame({'full_link': full_url}, index = [0]),ignore_index=True)
 
 
-##Phone Details ########
+##Phone Specs ################################################################
 device_specs = pd.DataFrame()
 
 #for link in df['full_link']:
-for link in df.full_link[1059:2000]:
+for link in df.full_link[11908:]:
     phone_source_code=r.get(link)
     phone_plain_text=phone_source_code.text
     phone_soup = BeautifulSoup(phone_plain_text, 'lxml')
@@ -62,5 +62,6 @@ for link in df.full_link[1059:2000]:
     device_specs = device_specs.append(pd.DataFrame({'model': name, 'ram': ram, 'gpu': gpu, 'cpu': cpu}, index = [0]),ignore_index=True)
     print("finish row" + " " + str(link))
 
+device_specs.to_csv('spec_list_full.csv')
 
 
