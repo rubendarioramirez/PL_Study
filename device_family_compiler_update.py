@@ -15,9 +15,8 @@ import matplotlib.pyplot as plt
 sns.set(style="whitegrid", color_codes=True)
 
 ##Parse the file
-xl = pd.ExcelFile("original_pl.xls")
-df = xl.parse("overall")
-
+xl = pd.ExcelFile("DeviceList_25May2018.xlsx")
+df = xl.parse("Pub List Data")
 
 #####FIRST GROUP -- RAM PARSING #####################################
 ##Variables to setup before compiling the PL
@@ -44,9 +43,11 @@ df['RAM_FAM'] = df['RAM'].apply(add_ram_fam)
 
 ###### SECOND GROUP -- GPU PARSING #################################
 ##Create a list of GPUs per type, LOW, MID, HIGH
-low_gpu_list = ['ARM Mali 450 (750Mhz)','ARM Mali 450 (700Mhz)','ARM Mali 450 (600Mhz)','ARM Mali 450 (533Mhz)','ARM Mali 400 (614Mhz)','ARM Mali 400 (600Mhz)','ARM Mali 400 (533Mhz)','ARM Mali 400 (525Mhz)','ARM Mali 400 (512Mhz)','ARM Mali 400 (500Mhz)','ARM Mali 400 (480Mhz)','ARM Mali 400 (400Mhz)','ARM Mali 400 (384Mhz)','ARM Mali 400 (312Mhz)','ARM Mali 400 (256Mhz)','ARM Mali 400 (250Mhz)','Vivante','Vivante GC 800 (575Mhz)','Vivante GC 4000 (240Mhz)','Qualcomm Adreno 308 (650Mhz)','Qualcomm Adreno 308 (400Mhz)','Qualcomm Adreno 306 (400Mhz)','Qualcomm Adreno 305 (400Mhz)','Qualcomm Adreno 304 (400Mhz)','Qualcomm Adreno 302 (400Mhz)','Qualcomm Adreno 225 (400Mhz)','Qualcomm Adreno 220 (266Mhz)','Qualcomm Adreno 205 (245Mhz)','Qualcomm Adreno 203 (300Mhz)','Qualcomm Adreno 200 (245Mhz)','Qualcomm Adreno 200 (133Mhz)','Imagination Tech PowerVR G6110 (600Mhz)','Imagination Tech PowerVR G6110 (576Mhz)','Imagination Tech PowerVR SGX544 (480Mhz)','Imagination Tech PowerVR SGX544 (357Mhz)','Imagination Tech PowerVR SGX544 (286Mhz)','Imagination Tech PowerVR SGX544 (256Mhz)','Imagination Tech PowerVR SGX544 (156Mhz)','Imagination Tech PowerVR SGX540 (600Mhz)','Imagination Tech PowerVR SGX540 (200Mhz)','Imagination Tech PowerVR SGX531 Ultra (525Mhz)','Imagination Tech PowerVR SGX531 Ultra (522Mhz)','Imagination Tech PowerVR SGX531 (522Mhz)','Imagination Tech PowerVR SGX531 (281Mhz)']
-mid_gpu_list = ['Qualcomm Adreno 405 (550Mhz)','Qualcomm Adreno 330 (574Mhz)','Qualcomm Adreno 330 (450Mhz)','Qualcomm Adreno 320 (400Mhz)','ARM Mali T720 (700Mhz)','ARM Mali T720 (675Mhz)','ARM Mali T720 (668Mhz)','ARM Mali T720 (600Mhz)','ARM Mali T720 (550Mhz)','ARM Mali T720 (520Mhz)','ARM Mali T720 (500Mhz)','ARM Mali T720 (450Mhz)','ARM Mali T628 (600Mhz)','ARM Mali T628 (533Mhz)','ARM Mali T624 (600Mhz)','ARM Mali T604 (533Mhz)','ARM Mali T860 (700Mhz)','ARM Mali T860 (650Mhz)','ARM Mali T860 (600Mhz)','ARM Mali T860 (550Mhz)','ARM Mali T860 (520Mhz)','ARM Mali T860 (350Mhz)','ARM Mali T830 (950Mhz)','ARM Mali T830 (900Mhz)','ARM Mali T830 (700Mhz)','ARM Mali T820 (750Mhz)','ARM Mali T820 (650Mhz)']
-high_gpu_list = ['Qualcomm Adreno 630','Qualcomm Adreno 540 (650Mhz)','Qualcomm Adreno 530 (653Mhz)','Qualcomm Adreno 512 (650Mhz)','Qualcomm Adreno 510 (600Mhz)','Qualcomm Adreno 508 (650Mhz)','Qualcomm Adreno 506 (650Mhz)','Qualcomm Adreno 506 (600Mhz)','Qualcomm Adreno 505 (450Mhz)','Qualcomm Adreno 430 (650Mhz)','Qualcomm Adreno 420 (600Mhz)','Qualcomm Adreno 418 (600Mhz)','Imagination Tech PowerVR GT7400 Plus (800Mhz)','Imagination Tech PowerVR GX6250 (600Mhz)','Imagination Tech PowerVR GE8300 (500Mhz)','Imagination Tech PowerVR GE8300 (400Mhz)','Imagination Tech PowerVR GE8100 (570Mhz)','Imagination Tech PowerVR GE8100 (450Mhz)','Imagination Tech PowerVR G6200 (700Mhz)','Imagination Tech PowerVR G6200 (600Mhz)','ARM Mali G72 (900Mhz)','ARM Mali G71 (550Mhz)','ARM Mali G71 (1300Mhz)','ARM Mali G71 (1037Mhz)','ARM Mali T880 (900Mhz)','ARM Mali T880 (850Mhz)','ARM Mali T880 (780Mhz)','ARM Mali T880 (650Mhz)','ARM Mali T880 (1000Mhz)','ARM Mali T760 (772Mhz)','ARM Mali T760 (700Mhz)','ARM Mali T760 (600Mhz)','ARM Mali T760 (500Mhz)','ARM Mali T750 (500Mhz)']
+low_gpu_list = ['Below iPhone 4s','iPhone 4s-', 'iPhone 4s','iPhone 4s+','iPhone 5-', 'iPhone 5s-','iPhone 5']
+mid_gpu_list = ['iPhone 5+', 'iPhone 5s+', 'iPhone 5s']
+high_gpu_list = ['iPhone 6','iPhone 6+','iphone 6s','iPhone 7', 'iPhone 8+']
+
+df.Counterpart.unique()
 ##This function will check for each row if the GPU is in the list above, if it's there 
 ##Will create the right category. If not, will return NONE
 def add_gpu_fam(row):
@@ -61,7 +62,7 @@ def add_gpu_fam(row):
         result = 'HIGH-GPU'
         return result
     
-df['GPU_FAM'] = df['GPU'].apply(add_gpu_fam)
+df['GPU_FAM'] = df['Counterpart'].apply(add_gpu_fam)
 
 ###### THIRD GROUP -- CPU PARSING #################################
 
@@ -178,14 +179,10 @@ df['family_class'] = df['merged_cells'].apply(match_list)
 
 df = df.drop(columns=['merged_cells'])
 
-gpu_filling = 'MID-GPU'
-df['GPU_FAM'] = df.apply(lambda row: "MID-GPU")
-df['GPU_FAM'].isnull().sum()
-
-
+df.family_class.value_counts()
 #################### OUPUT THE NEW FILE
 
-writer = pd.ExcelWriter('compiled_pl.xlsx')
+writer = pd.ExcelWriter('compiled_pl_26_may_2018.xlsx')
 df.to_excel(writer,'total')
 writer.save()
 
