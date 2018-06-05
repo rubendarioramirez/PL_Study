@@ -12,6 +12,8 @@ import itertools
 import csv
 import seaborn as sns
 import matplotlib.pyplot as plt
+import math
+
 sns.set(style="whitegrid", color_codes=True)
 
 ##Parse the file
@@ -98,15 +100,16 @@ ram_list = ram_list[:3]
 
 possible_fam = list(itertools.product(cpu_list,gpu_list,ram_list))
 
-
 with open('family_list.csv', "w") as output:
     writer = csv.writer(output, lineterminator='\n')
     for val in possible_fam:
         writer.writerow([val])
-        
 
+#Create a new cell with possible families to match later.        
 df['merged_cells'] = df['CPU_FAM'] + ", " + df['GPU_FAM'] + ", " + df['RAM_FAM']
-
+#Create a dictionary of families to be matched against.
+combo_to_family = {'{}-CPU, {}-GPU, {}-RAM'.format(c, g, r): 'Family {}'.format(i)
+for i, (c, g, r) in enumerate(itertools.product(('LOW', 'MID', 'HIGH'), repeat=3), 1)}
 
 def match_list(row):
     fam_list = ""
@@ -114,78 +117,48 @@ def match_list(row):
     result = pd.read_csv("family_list.csv")
 
     for row in result :
-
-        if tomatch == "HIGH-CPU, MID-GPU, HIGH-RAM":
-            fam_list = "Family 1"
-        elif tomatch == "HIGH-CPU, MID-GPU, MID-RAM":
-            fam_list = "Family 2"           
-        elif tomatch == "HIGH-CPU, MID-GPU, LOW-RAM":
-            fam_list = "Family 3"         
-        elif tomatch == "HIGH-CPU, HIGH-GPU, HIGH-RAM":
-            fam_list = "Family 4"            
-        elif tomatch == "HIGH-CPU, HIGH-GPU, MID-RAM":
-            fam_list = "Family 5"
-        elif tomatch == "HIGH-CPU, HIGH-GPU, LOW-RAM":
-            fam_list = "Family 6"
-        elif tomatch == "HIGH-CPU, LOW-GPU, HIGH-RAM":
-            fam_list = "Family 7"
-        elif tomatch == "HIGH-CPU, LOW-GPU, MID-RAM":
-            fam_list = "Family 8"
-        elif tomatch == "HIGH-CPU, LOW-GPU, LOW-RAM":
-            fam_list = "Family 9"
-        elif tomatch == "MID-CPU, MID-GPU, HIGH-RAM":
-            fam_list = "Family 10"
-        elif tomatch == "MID-CPU, MID-GPU, MID-RAM":
-            fam_list = "Family 11"
-        elif tomatch == "MID-CPU, MID-GPU, LOW-RAM":
-            fam_list = "Family 12"
-        elif tomatch == "MID-CPU, HIGH-GPU, HIGH-RAM":
-            fam_list = "Family 13"
-        elif tomatch == "MID-CPU, HIGH-GPU, MID-RAM":
-            fam_list = "Family 14"
-        elif tomatch == "MID-CPU, HIGH-GPU, LOW-RAM":
-            fam_list = "Family 15"
-        elif tomatch == "MID-CPU, LOW-GPU, HIGH-RAM":
-            fam_list = "Family 16"
-        elif tomatch == "MID-CPU, LOW-GPU, MID-RAM":
-            fam_list = "Family 17"
-        elif tomatch == "MID-CPU, LOW-GPU, LOW-RAM":
-            fam_list = "Family 18"
-        elif tomatch == "LOW-CPU, MID-GPU, HIGH-RAM":
-            fam_list = "Family 19"
-        elif tomatch == "LOW-CPU, MID-GPU, MID-RAM":
-            fam_list = "Family 20"
-        elif tomatch == "LOW-CPU, MID-GPU, LOW-RAM":
-            fam_list = "Family 21"
-        elif tomatch == "LOW-CPU, HIGH-GPU, HIGH-RAM":
-            fam_list = "Family 22"
-        elif tomatch == "LOW-CPU, HIGH-GPU, MID-RAM":
-            fam_list = "Family 23"
-        elif tomatch == "LOW-CPU, HIGH-GPU, LOW-RAM":
-            fam_list = "Family 24"
-        elif tomatch == "LOW-CPU, LOW-GPU, HIGH-RAM":
-            fam_list = "Family 25"
-        elif tomatch == "LOW-CPU, LOW-GPU, MID-RAM":
-            fam_list = "Family 26"
-        elif tomatch == "LOW-CPU, LOW-GPU, LOW-RAM":
-            fam_list = "Family 27" 
-        else:
-            fam_list = np.nan
+        fam_list = combo_to_family.get(tomatch, np.nan)
     
     return fam_list
 
-
+##Apply the function.
 df['family_class'] = df['merged_cells'].apply(match_list)
-
+#Drop the possible families, no need anymore.
 df = df.drop(columns=['merged_cells'])
 
-df.family_class.value_counts()
-#################### OUPUT THE NEW FILE
+################################################################################
+#Aspect Ratio addition
+def aspect_ratio(row):
+    screenWidth = ""
+    screenHeight = ""
+    factor = ""
+    result = ""
+    screenWidth = int(row.split(" ")[0].split("x")[0])
+    screenHeight = int(row.split(" ")[0].split("x")[1]) 
+    factor = math.gcd(screenWidth, screenHeight)
+    widthRatio = int(screenWidth / factor)
+    heightRatio = int(screenHeight / factor)
+    result = str(widthRatio) + ':' +  str(heightRatio)
+    return result
+    
+df['aspect_ratio'] = df['Screen size'].apply(aspect_ratio)
 
-writer = pd.ExcelWriter('compiled_pl_26_may_2018.xlsx')
+df.aspect_ratio.unique()
+
+#################### Get the real devices to test based on their revenue Share.
+devicesToTest = pd.DataFrame()
+for x in range(0,22): 
+    maxRev = float(df[df['family_class'] == "Family "+ str(x)]['Revenue Share'].max() )
+    toTest = df[df['Revenue Share'] == maxRev]
+    devicesToTest = devicesToTest.append(pd.DataFrame(toTest), ignore_index=True)
+    
+
+#################### OUPUT THE NEW FILE
+writer = pd.ExcelWriter('compiled_pl_29_5_18_aspectratio.xlsx')
 df.to_excel(writer,'total')
 writer.save()
 
-
- 
+writer = pd.ExcelWriter('toTest.xlsx')
+devicesToTest.to_excel(writer,'total')
+writer.save()
             
