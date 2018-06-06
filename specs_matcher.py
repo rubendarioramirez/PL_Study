@@ -11,8 +11,7 @@ from fuzzywuzzy import process
 import pandas as pd
 import numpy as np
 
-xl = pd.ExcelFile("compiled_pl_26_may_2018.xlsx")
-df_tomatch = pd.read_csv("spec_list_full.csv")
+xl = pd.ExcelFile("compiled_pl_5_6_18_aspectratio.xlsx")
 df = xl.parse("total")
 
 #GPPA file to compare 
@@ -27,9 +26,12 @@ for x , df_row in df.iterrows():
             match_ratio = fuzz.partial_ratio(str(df_row['name']), str(row['name']))
             print ("Index: " + str(i) +  " " +  str(df_row['name']) + " on row: " + str(row['name']))
             if match_ratio > 70:
+                
                 print(str(match_ratio))
-                existing_in_studio = existing_in_studio.append(pd.DataFrame(df_row), ignore_index=True)        
-        
-        
-        
-        
+                existing_in_studio = existing_in_studio.append(pd.DataFrame(df[df['name'] == df_row['name']]), ignore_index=True)   
+                
+
+writer = pd.ExcelWriter('existingjogpartial.xlsx')
+existing_in_studio.to_excel(writer,'total')
+writer.save()
+            
