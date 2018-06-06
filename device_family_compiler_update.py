@@ -10,25 +10,39 @@ import pandas as pd
 import numpy as np
 import itertools
 import csv
-import seaborn as sns
-import matplotlib.pyplot as plt
 import math
-
-sns.set(style="whitegrid", color_codes=True)
 
 ##Parse the file
 xl = pd.ExcelFile("DeviceList_25May2018.xlsx")
 df = xl.parse("Pub List Data")
 
-#####FIRST GROUP -- RAM PARSING #####################################
-##Variables to setup before compiling the PL
+#### CHIPSET EXPERIMENT
+df['SOC'].unique()
+
+df[df['SOC'] == 'Samsung Exynos 8895'].loc[:, ['GPU', 'CPU', 'RAM', 'Counterpart']].isnull()
+
+df[df['SOC'] == 'Qualcomm MSM7201A'].loc[:, ['GPU', 'CPU', 'RAM', 'Counterpart']].isnull()
+
+
+df = df.replace(r'^\s+$', np.nan, regex=True)
+
+df['SOC'].isnull().sum()
+
+df.loc[:,['SOC','GPU', 'CPU', 'RAM']].dropna()
+
+
+missingdata = df[df['SOC'].isnull() == True]
+
+#### RAM PARSING #####################################
+
+#Variables to setup before compiling the PL
 low_ram_def = 1024
 mid_ram_def = 2048
 
-##Make RAM a float type for easier parsing
+#Make RAM a float type for easier parsing
 df['RAM'] = pd.to_numeric(df['RAM'], errors='coerce')
-##This function will check each RAM type and create the new column based on your
-## definition for the ram types above.
+
+# definition for the ram types above.
 def add_ram_fam(row):
     result = ''
     if row <= low_ram_def:
@@ -43,7 +57,15 @@ def add_ram_fam(row):
     
 df['RAM_FAM'] = df['RAM'].apply(add_ram_fam)
 
-###### SECOND GROUP -- GPU PARSING #################################
+##### GPU PARSING #################################
+
+##Verifying Adreno 530
+df[(df['SOC']=='Qualcomm MSM8996') | (df['SOC']=='Qualcomm APQ8096')]['GPU'] = 'Adreno 530'
+##Verifying Adreno 510
+df[(df['SOC']=='Qualcomm MSM8994') | (df['SOC']=='Qualcomm APQ8094')]['GPU'] = 'Adreno 430'
+##Verifying Adreno 430
+df[(df['SOC']=='Qualcomm APQ8076') | (df['SOC']=='Qualcomm MSM8976')]['GPU'] = 'Adreno 510'
+
 ##Create a list of GPUs per type, LOW, MID, HIGH
 low_gpu_list = ['Below iPhone 4s','iPhone 4s-', 'iPhone 4s','iPhone 4s+','iPhone 5-', 'iPhone 5s-','iPhone 5']
 mid_gpu_list = ['iPhone 5+', 'iPhone 5s+', 'iPhone 5s']
@@ -66,7 +88,7 @@ def add_gpu_fam(row):
     
 df['GPU_FAM'] = df['Counterpart'].apply(add_gpu_fam)
 
-###### THIRD GROUP -- CPU PARSING #################################
+##### CPU PARSING #################################
 
 ##Simple parsing, depending the cores the category of the CPU
 def add_cpu_fam(row):
@@ -151,10 +173,10 @@ for x in range(0,22):
     maxRev = float(df[df['family_class'] == "Family "+ str(x)]['Revenue Share'].max() )
     toTest = df[df['Revenue Share'] == maxRev]
     devicesToTest = devicesToTest.append(pd.DataFrame(toTest), ignore_index=True)
-    
 
-#################### OUPUT THE NEW FILE
-writer = pd.ExcelWriter('compiled_pl_29_5_18_aspectratio.xlsx')
+#################### OUPUT THE NEW FILE ##################
+    
+writer = pd.ExcelWriter('compiled_pl_5_6_18_aspectratio.xlsx')
 df.to_excel(writer,'total')
 writer.save()
 

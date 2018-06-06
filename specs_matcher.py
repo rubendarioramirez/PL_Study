@@ -15,29 +15,21 @@ xl = pd.ExcelFile("compiled_pl_26_may_2018.xlsx")
 df_tomatch = pd.read_csv("spec_list_full.csv")
 df = xl.parse("total")
 
+#GPPA file to compare 
+xl_gppa = pd.ExcelFile("GPPA_FILTERED.xls")
+df_gppa = xl_gppa.parse("GPPAFilteredReport")
 
 
-
-##Get the NO RAM Devices
-no_ramselector = pd.isna(df.RAM)
-df_noram = df[no_ramselector]
-##Now drop them from the origial DF
-df.dropna(subset=['RAM'], inplace=True)
-
-##Match them with the device specs. Treshold ratio is 70. Could be more.
-def get_match_ratio(row):
-    match_ratio = fuzz.partial_ratio(str(row), df_tomatch)
-    if match_ratio > 80:
-        df_noram['RAM'] = df_tomatch['ram'] 
-        df_noram['GPU'] = df_tomatch['gpu'] 
-        df_noram['CPU'] = df_tomatch['cpu'] 
-        print("Found match, updating..")
-    return str(match_ratio)
-
-df_noram.name.apply(get_match_ratio)
-
-for index, row in df_noram.iterrows():
-     match_ratio = fuzz.partial_ratio(str(row['name']), df_tomatch.model)
-     if match_ratio > 80:
-         print("match found")
-         print(str(row['name']) + " " + str(df_tomatch.model[index]))
+existing_in_studio = pd.DataFrame()     
+for x , df_row in df.iterrows():
+    for i, row in df_gppa.iterrows():
+        if(pd.notna(row['name']) and pd.notna(df_row['name'])):
+            match_ratio = fuzz.partial_ratio(str(df_row['name']), str(row['name']))
+            print ("Index: " + str(i) +  " " +  str(df_row['name']) + " on row: " + str(row['name']))
+            if match_ratio > 70:
+                print(str(match_ratio))
+                existing_in_studio = existing_in_studio.append(pd.DataFrame(df_row), ignore_index=True)        
+        
+        
+        
+        
