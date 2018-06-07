@@ -11,27 +11,42 @@ import numpy as np
 import itertools
 import csv
 import math
+from IPython.display import display
 
 ##Parse the file
 xl = pd.ExcelFile("DeviceList_25May2018.xlsx")
-df = xl.parse("Pub List Data")
+df_raw = xl.parse("Pub List Data")
 
-#### CHIPSET EXPERIMENT
-df['SOC'].unique()
+######## Initial Mungling ################################################
 
-df[df['SOC'] == 'Samsung Exynos 8895'].loc[:, ['GPU', 'CPU', 'RAM', 'Counterpart']].isnull()
+##Fill with np.nan for non existing values
+df_raw = df_raw.replace(r'^\s+$', np.nan, regex=True)
+df_raw['Counterpart'].replace(r'^-', np.nan, regex=True, inplace = True)
 
-df[df['SOC'] == 'Qualcomm MSM7201A'].loc[:, ['GPU', 'CPU', 'RAM', 'Counterpart']].isnull()
+##Verifying Adreno 530
+df_raw[(df_raw['SOC']=='Qualcomm MSM8996') | (df_raw['SOC']=='Qualcomm APQ8096')]['GPU'] = 'Adreno 530'
+##Verifying Adreno 510
+df_raw[(df_raw['SOC']=='Qualcomm MSM8994') | (df_raw['SOC']=='Qualcomm APQ8094')]['GPU'] = 'Adreno 430'
+##Verifying Adreno 430
+df_raw[(df_raw['SOC']=='Qualcomm APQ8076') | (df_raw['SOC']=='Qualcomm MSM8976')]['GPU'] = 'Adreno 510'
 
 
-df = df.replace(r'^\s+$', np.nan, regex=True)
+#Get missing GPU DF
+df_nocounter = df_raw[df_raw['Counterpart'].isnull() == True]
+df_counterpart = df_raw[df_raw['Counterpart'].isnull() == False]
 
-df['SOC'].isnull().sum()
-
-df.loc[:,['SOC','GPU', 'CPU', 'RAM']].dropna()
-
-
-missingdata = df[df['SOC'].isnull() == True]
+#Create a dictonary of GPUS and Counterparts
+gpu_dict={}
+for x in df_counterpart['GPU'].unique():
+    if len(df_counterpart[(df_counterpart['GPU'] == str(x))]['Counterpart'].unique()) > 0:
+        gpu_dict[x]=str(df_counterpart[(df_counterpart['GPU'] == str(x))]['Counterpart'].unique()[0])
+        print(gpu_dict)
+        
+#Now map it like in the cowboy movies        
+df_nocounter['Counterpart'] = df_nocounter.GPU.map(gpu_dict)
+#Concat to a new DF with more devices
+df = pd.concat([df_counterpart, df_nocounter])
+df.isnull().sum()
 
 #### RAM PARSING #####################################
 
@@ -58,14 +73,6 @@ def add_ram_fam(row):
 df['RAM_FAM'] = df['RAM'].apply(add_ram_fam)
 
 ##### GPU PARSING #################################
-
-##Verifying Adreno 530
-df[(df['SOC']=='Qualcomm MSM8996') | (df['SOC']=='Qualcomm APQ8096')]['GPU'] = 'Adreno 530'
-##Verifying Adreno 510
-df[(df['SOC']=='Qualcomm MSM8994') | (df['SOC']=='Qualcomm APQ8094')]['GPU'] = 'Adreno 430'
-##Verifying Adreno 430
-df[(df['SOC']=='Qualcomm APQ8076') | (df['SOC']=='Qualcomm MSM8976')]['GPU'] = 'Adreno 510'
-
 ##Create a list of GPUs per type, LOW, MID, HIGH
 low_gpu_list = ['Below iPhone 4s','iPhone 4s-', 'iPhone 4s','iPhone 4s+','iPhone 5-', 'iPhone 5s-','iPhone 5']
 mid_gpu_list = ['iPhone 5+', 'iPhone 5s+', 'iPhone 5s']
@@ -148,6 +155,8 @@ df['family_class'] = df['merged_cells'].apply(match_list)
 #Drop the possible families, no need anymore.
 df = df.drop(columns=['merged_cells'])
 
+df['family_class'].describe()
+
 ################################################################################
 #Aspect Ratio addition
 def aspect_ratio(row):
@@ -167,20 +176,10 @@ df['aspect_ratio'] = df['Screen size'].apply(aspect_ratio)
 
 df.aspect_ratio.unique()
 
-#################### Get the real devices to test based on their revenue Share.
-devicesToTest = pd.DataFrame()
-for x in range(0,22): 
-    maxRev = float(df[df['family_class'] == "Family "+ str(x)]['Revenue Share'].max() )
-    toTest = df[df['Revenue Share'] == maxRev]
-    devicesToTest = devicesToTest.append(pd.DataFrame(toTest), ignore_index=True)
-
 #################### OUPUT THE NEW FILE ##################
     
 writer = pd.ExcelWriter('compiled_pl_5_6_18_aspectratio.xlsx')
 df.to_excel(writer,'total')
 writer.save()
 
-writer = pd.ExcelWriter('toTest.xlsx')
-devicesToTest.to_excel(writer,'total')
-writer.save()
-            
+
