@@ -9,7 +9,7 @@ Created on Wed Jun  6 12:01:54 2018
 import pandas as pd
 import numpy as np
 
-df = pd.read_excel("compiled_pl_5_6_18_aspectratio.xlsx")
+df = pd.read_excel("pl_9june.xlsx")
 df.head()
 
 
@@ -21,10 +21,9 @@ pivotTot.index = [pivotTot.index, ['Total'] * len(pivotTot)]
 pivotDF = pd.concat([pivotDF, pivotTot]).sort_index().append(pivotDF.sum().rename(('Grand', 'Total')))
 pivotDF.columns = ['Device Count', 'Sum of Revenue Share']
 
-pivotDF.query('GPU ==  ["Qualcomm Adreno 330 (450Mhz)"]')
 
 #Excel exporter and formater
-writer = pd.ExcelWriter('pivotedPL.xlsx', engine='xlsxwriter')
+writer = pd.ExcelWriter('PL_9jun_sumup.xlsx', engine='xlsxwriter')
 pivotDF.to_excel(writer,'total')
 workbook  = writer.book
 worksheet = writer.sheets['total']
