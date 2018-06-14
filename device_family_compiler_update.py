@@ -9,79 +9,44 @@ Created on Wed May  9 09:29:21 2018
 import pandas as pd
 import numpy as np
 import itertools
-import csv
 import math
 import re
 
 ##Parse the file
-xl = pd.ExcelFile("DeviceList_25May2018.xlsx")
-df_raw = xl.parse("Pub List Data")
+xl = pd.ExcelFile("PL_13_june_daus.xlsx")
+df = xl.parse("total")
+
+
+roseta = pd.ExcelFile("rosetta.xls")
+roseta = roseta.parse("total")
+
+df = xl.parse("total")
+
 #Get the GPU counterparts
 gpu_file = 'gpu_counterparts.csv'
 gpu_counterparts = pd.read_csv(gpu_file)
-#Create a GPU dictonary
-gpu_dict = gpu_counterparts.set_index('GPU').to_dict()
 
 ######## Initial Mungling ################################################
 
 ##Fill with np.nan for non existing values
-df_raw = df_raw.replace(r'^\s+$', np.nan, regex=True)
-df_raw['Counterpart'].replace(r'^-', np.nan, regex=True, inplace = True)
+df = df.replace(r'^\s+$', np.nan, regex=True)
+df['Counterpart'].replace(r'^-', np.nan, regex=True, inplace = True)
 
-df_raw[(df_raw['SOC']=='Qualcomm MSM8996') | (df_raw['SOC']=='Qualcomm APQ8096')]['GPU'] = 'Adreno 530'
-##Verifying Adreno 510
-df_raw[(df_raw['SOC']=='Qualcomm MSM8994') | (df_raw['SOC']=='Qualcomm APQ8094')]['GPU'] = 'Adreno 430'
-##Verifying Adreno 430
-df_raw[(df_raw['SOC']=='Qualcomm APQ8076') | (df_raw['SOC']=='Qualcomm MSM8976')]['GPU'] = 'Adreno 510'
-
-#Get missing Counterpart DF
-df_nocounter = df_raw[df_raw['Counterpart'].isnull() == True]
-df_counterpart = df_raw[df_raw['Counterpart'].isnull() == False]
-
-#Now map it like in the cowboy movies        
-df_nocounter['Counterpart'] = df_nocounter.GPU.map(gpu_dict)
-
-
-#Create a dictonary of GPUS and Counterparts
+#Create a GPU dictonary from the GPU_Counterpart CSV
 gpu_dict={}
-for x in df_counterpart['GPU'].unique():
-    if len(df_counterpart[(df_counterpart['GPU'] == str(x))]['Counterpart'].unique()) > 0:
-        gpu_dict[x]=str(df_counterpart[(df_counterpart['GPU'] == str(x))]['Counterpart'].unique()[0])
-gpu_dict['Qualcomm Adreno 509 (370Mhz)'] = 'iPhone 5s'
-gpu_dict['Intel HD Graphics 500 (650Mhz)'] ='iPhone 6-'
-gpu_dict['Intel HD Graphics 400 (600Mhz)'] ='iPhone 5s+'
-gpu_dict['Intel HD Graphics 400 (640Mhz)'] ='iPhone 5s+'
-gpu_dict['ARM Mali T820 (550Mhz)'] ='iPhone 5s-'
-gpu_dict['3x ARM Mali G72 (800Mhz)'] ='iPhone 8'
-gpu_dict['Imagination Tech PowerVR GE8320 (650Mhz)'] ='iPhone 5s+'
+for x in gpu_counterparts['GPU']:
+    gpu_dict[x]= gpu_counterparts[(gpu_counterparts['GPU'] == str(x))]['Counterpart'].unique()[0]
 
-#Map by GPU with counterpart    
-df_nocounter['Counterpart'] = df_nocounter.GPU.map(gpu_dict)
-
+#Map it later (Some sort of Vlookup)
+df['Counterpart'] = df.GPU.map(gpu_dict)
 
 #Create a dictonary of SOC and Counterparts
 soc_dict={}
-for x in df_counterpart['SOC'].unique():
-    if len(df_counterpart[(df_counterpart['SOC'] == str(x))]['Counterpart'].unique()) > 0:
-        soc_dict[x]=str(df_counterpart[(df_counterpart['SOC'] == str(x))]['Counterpart'].unique()[0])
+for x in df['SOC'].unique():
+    if len(df[(df['SOC'] == str(x))]['Counterpart'].unique()) > 0:
+        soc_dict[x]= str(df[(df['SOC'] == str(x))]['Counterpart'].unique()[0])        
 #Map by SOC with counterpart      
-df_nocounter['Counterpart'] = df_nocounter.SOC.map(soc_dict)
-
-#Concat to a new DF with more devices
-df = pd.concat([df_counterpart, df_nocounter])
-
-##Adding 3x ARM Mali G72 (800Mhz)
-armg72 = df['GPU']=='3x ARM Mali G72 (800Mhz)'
-df['Counterpart'][armg72] = 'iPhone 8'
-adreno509 = df['GPU']=='Qualcomm Adreno 509 (370Mhz)'
-df['Counterpart'][adreno509] = 'iPhone 5s'
-intel400 = df['GPU']=='Intel HD Graphics 400 (600Mhz)'
-df['Counterpart'][intel400] = 'iPhone 5s+'
-imagine = df['GPU']=='Imagination Tech PowerVR GE8100 (570Mhz)'
-df['Counterpart'][imagine] = 'iPhone 5-'
-
-#df.Counterpart.unique()
-#df.isnull().sum()
+df['Counterpart'] = df.SOC.map(soc_dict)
 
 #### RAM PARSING #####################################
 
@@ -111,7 +76,7 @@ df['RAM_FAM'] = df['RAM'].apply(add_ram_fam)
 ##Create a list of GPUs per type, LOW, MID, HIGH
 low_gpu_list = ['Below iPhone 4s','iPhone 4s','iPhone 4s-','iPhone 4s+','iPhone 5','iPhone 5-','iPhone 5+']
 mid_gpu_list = ['iPhone 5s','iPhone 5s-','iPhone 5s+','iPhone 6','iPhone 6-','iPhone 6+']
-high_gpu_list = ['iPhone 6s','iPhone 6s-','iPhone 6s+','iPhone 7','iPhone 7-','iPhone 7+','iPhone 8','iPhone 8+','iPhone 8-','iPhone 8+']
+high_gpu_list = ['iPhone 6s','iphone 6s' ,'iPhone 6s-','iPhone 6s+','iPhone 7','iPhone 7-','iPhone 7+','iPhone 8','iPhone 8+','iPhone 8-','iPhone 8+']
 
 df.Counterpart.unique()
 ##This function will check for each row if the GPU is in the list above, if it's there 
@@ -130,137 +95,122 @@ def add_gpu_fam(row):
     
 df['GPU_FAM'] = df['Counterpart'].apply(add_gpu_fam)
 
-df.isnull().sum()
-
 ##### CPU PARSING #################################
 
-def add_cpu_fam(row):
-    #CPU LOW
-    #[x]Contains 2x and does not contain 4x or 6x or 8x
-    #[x]Contains 4x and freq is below 1800
-    #[x]Does not contain 2x or 4x or 6x or 8x
-    #CPU MID
-    #[x]Contains 4x and freq is above [1800,2400)
-    #[x]Contains 6x
-    #[x]Contains 8x
-    #[x]Contains 2x and does not contain 4x or 6x or 8x and freq is above 2000
-    #CPU MID
-    #Contains 4x and freq is above 2400 (including)
+def get_best_freq(a,b):
+    if a > b:
+        return a
+    else:
+        return b
+
+def get_freq(first_cpu_info, second_cpu_info):
+    #Get the frequency of both CPUs
+    frequency_first_cpu = int(re.findall(r'\d+', str(first_cpu_info).split('(')[1])[0])
+    frequency_second_cpu = int(re.findall(r'\d+', str(second_cpu_info).split('(')[1])[0])
+    biggest_freq = get_best_freq(frequency_first_cpu,frequency_second_cpu)
+    return biggest_freq
     
-    bestCPU = ''
-    freq = ''
-    #Catch the single core
-    if str(row).split("; ")[0].startswith('A') or str(row).split("; ")[0].startswith('Q'):
-        result = 'LOW-CPU'
-        return result
-    #Catch if there are more than 2 CPUS
-    if len(str(row).split("; ")) > 1:
-        a = str(row).split("; ")[0][0]
-        b = str(row).split("; ")[1][0]
-        if a.isdigit() and b.isdigit():
-            freq = int(re.findall(r'\d+', str(row).split("; ")[0].split('(')[1])[0])
-            #if it's 2X
-            if int(a) == 2:
-                bestCPU = int(a) - int(b)
-                #The other one is also 2X
-                if bestCPU == 0:
-                    return 'LOW-CPU'
-                elif freq > 2000:
-                    return 'MID-CPU'
-                #The second is bigger but lower frequency
-                elif int(b) > 2:
-                    if freq < 1800:
-                        return 'LOW-CPU'
-                    else:
-                        return 'MID-CPU'
-            if int(a) == 4: 
-                if freq > 1800 and freq < 2400:
-                    return 'MID-CPU'
-                    #if it has big freq
-                elif freq >= 2400:
-                    return 'HIGH-CPU'
-                elif freq <= 1800:
-                    return 'LOW-CPU'
-            #It's bigger than 4X
-            if int(a) == 6:
-                return 'MID-CPU'
-            if int(a) == 8:
-                return 'MID-CPU'
-            
-                        
-    #If just 1 CPU
-    elif len(str(row).split("; ")) == 1:
-        a = str(row).split("; ")[0][0] 
-        if a.isdigit():
-            #if it's 2X then it's low
-            if int(a) == 2:
-                return 'LOW-CPU'
-            #If Quadcore but low Freq
-            elif int(a) == 4:
-                freq = int(re.findall(r'\d+', str(row).split("; ")[0].split('(')[1])[0])
-                if freq <= 1800:
-                    return 'LOW-CPU'
-                if  freq > 1800 and freq < 2400:
-                    return 'MID-CPU'
-                #if it has big freq
-                elif freq >= 2400:
-                    return 'HIGH-CPU'
-            #It's bigger than 4X
-            elif int(a) == 6 or int(a) == 8:
-                return 'MID-CPU'
-            
 
-df['CPU_FAM'] = df['CPU'].apply(add_cpu_fam)
+def cpu_checker(cpu_info):
+    first_cpu = str(cpu_info).split("; ")[0] 
+    first_cpu_initial = first_cpu[0:1]
+    if first_cpu_initial == 'A' or first_cpu_initial == 'Q':
+        case_number = 1
+        return case_number
+    if len(str(cpu_info).split("; ")) > 1:
+        #Get CPU Initials
+        second_cpu = str(cpu_info).split("; ")[1] 
+        second_cpu_initial = second_cpu[0:1]
+        #Get frequency
+        frequency = get_freq(first_cpu,second_cpu)
+        if first_cpu_initial == "2" and second_cpu_initial == "2" and frequency < 2200:
+            case_number = 1
+            return case_number
+        if first_cpu_initial == "2" and second_cpu_initial == "2" and frequency >= 2200:
+            case_number = 2
+            return case_number
+        if first_cpu_initial == "4" or second_cpu_initial == "4":
+            if frequency < 1800:
+                case_number = 1
+                return case_number
+            if frequency >= 1800 and frequency < 2350:
+                case_number = 2
+                return case_number
+            if frequency >= 2350:
+                case_number = 3
+                return case_number
+        if first_cpu_initial == "6" or second_cpu_initial == "6":
+            case_number = 2
+            return case_number
+        if first_cpu_initial == "8" or second_cpu_initial == "8":
+            case_number = 2
+            return case_number
+        
+    #If we have just one CPU
+    elif len(str(cpu_info).split("; ")) <= 1:
+        if len(str(cpu_info).split('(')) > 1:
+            frequency = int(re.findall(r'\d+', str(cpu_info).split('(')[1])[0])
+            if first_cpu_initial == "2" and frequency < 2200:
+                case_number = 1
+                return case_number
+            if first_cpu_initial == "2" and frequency >= 2200:
+                case_number = 2
+                return case_number
+            if first_cpu_initial == "4":
+                if frequency < 1800:
+                    case_number = 1
+                    return case_number
+                if frequency >= 1800 and frequency < 2350:
+                    case_number = 2
+                    return case_number
+                if frequency >= 2350:
+                    case_number = 3
+                    return case_number
+            if first_cpu_initial == "8":
+                case_number = 2
+                return case_number 
+            if first_cpu_initial == "6":
+                case_number = 2
+                return case_number
+        
+def add_cpu_families(row):
+    get_case = cpu_checker(row)
+    if get_case == 1:
+        return "LOW-CPU"
+    if get_case == 2:
+        return "MID-CPU"
+    if get_case == 3:
+        return "HIGH-CPU"
+    
 
-
-
-faulty = df['CPU'] == '4x ARM Cortex-A9 (1400Mhz); ARM Cortex-A9 (1500Mhz)'
-faulty2 = df['CPU'] == '4x ARM Cortex-A9 (1600Mhz); ARM Cortex-A9 (1700Mhz)' 
-faulty3 = df['CPU'] == '4x ARM Cortex-A15 (1900Mhz); ARM Cortex-A15 (1900Mhz)' 
-faulty4 = df['CPU'] == '4x ARM Cortex-A9 (1200Mhz); ARM Cortex-A9 (1300Mhz)' 
-faulty5 = df['CPU'] == '4x ARM Cortex-A15 (2300Mhz); ARM Cortex-A15 (2300Mhz)' 
-df['CPU_FAM'][faulty] = 'LOW-CPU'
-df['CPU_FAM'][faulty2] = 'LOW-CPU'
-df['CPU_FAM'][faulty3] = 'MID-CPU'
-df['CPU_FAM'][faulty4] = 'LOW-CPU'
-df['CPU_FAM'][faulty5] = 'MID-CPU'
+df['CPU_FAM'] = df['CPU'].apply(add_cpu_families)
 
 df.isnull().sum()
+    
+
 ####################### FIND POSSIBLE FAMILIES #######################################
 
-cpu_list = list(df['CPU_FAM'].unique())
-cpu_list = cpu_list[:3]
 
-gpu_list = list(df['GPU_FAM'].unique())
-gpu_list = gpu_list[:3]
+#Changes Below Iphone4s for easier parsing and more coherent naming.
+df.replace('Below iPhone 4s', 'iPhone 4', inplace=True)
+df.fillna('-', inplace=True)
+df.replace('nan','-', inplace=True)
+df['new_families'] = df['Counterpart'] + "/" + df['RAM_FAM'] + "/" + df['GPU_FAM'] + "/" + df['CPU_FAM']
 
-ram_list = list(df['RAM_FAM'].unique())
-ram_list = ram_list[:3]
+def parse_new_fams(row):
+    if type(row) == str:
+        if len(row.split('/')) > 1:
+            groups = row.split('/')
+            counter = groups[0][0] + groups[0][7:]
+            ram = groups[1][0] 
+            gpu = groups[2][0] 
+            cpu = groups[3][0] 
+            result = str(counter) + ': ' + str(ram) + '/' + str(gpu) + '/' + str(cpu)
+            return result
 
-possible_fam = list(itertools.product(cpu_list,gpu_list,ram_list))
-
-#Create a new cell with possible families to match later.        
-df['merged_cells'] = df['CPU_FAM'] + ", " + df['GPU_FAM'] + ", " + df['RAM_FAM']
-#Create a dictionary of families to be matched against.
-combo_to_family = {'{}-CPU, {}-GPU, {}-RAM'.format(c, g, r): 'Family {}'.format(i)
-for i, (c, g, r) in enumerate(itertools.product(('LOW', 'MID', 'HIGH'), repeat=3), 1)}
-
-def match_list(row):
-    fam_list = ""
-    tomatch = row
-    result = combo_to_family.keys()
-
-    for row in result :
-        fam_list = combo_to_family.get(tomatch, np.nan)
-    
-    return fam_list
-
-##Apply the function.
-df['family_class'] = df['merged_cells'].apply(match_list)
-#Drop the possible families, no need anymore.
-df = df.drop(columns=['merged_cells'])
-
-df['family_class'].value_counts()
+df['family'] = df['new_families'].apply(parse_new_fams)
+#Drop new families, not necesary
+df = df.drop(columns=['new_families'])    
 
 ################################################################################
 #Aspect Ratio addition
@@ -282,8 +232,13 @@ df['aspect_ratio'] = df['Screen size'].apply(aspect_ratio)
 df.aspect_ratio.unique()
 
 #################### OUPUT THE NEW FILE ##################
-    
-writer = pd.ExcelWriter('pl_11june.xlsx')
+
+df.isnull().sum()
+len(df['SOC'].value_counts())
+
+
+
+writer = pd.ExcelWriter('pl_ultimate_updated.xlsx')
 df.to_excel(writer,'total')
 writer.save()
 
